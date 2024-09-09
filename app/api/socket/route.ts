@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { Server } from "socket.io";
 import type { NextApiRequest, NextApiResponse } from "next";
 

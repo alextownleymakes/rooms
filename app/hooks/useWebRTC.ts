@@ -1,6 +1,7 @@
 import { useRef } from "react";
+import { Socket } from "socket.io-client";
 
-export const useWebRTC = (socketRef: any, localStream: MediaStream | null) => {
+export const useWebRTC = (socketRef: React.MutableRefObject<Socket | null>, localStream: MediaStream | null) => {
   const peerConnections = useRef<{ [key: string]: RTCPeerConnection }>({});
   const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
 
@@ -10,7 +11,7 @@ export const useWebRTC = (socketRef: any, localStream: MediaStream | null) => {
     peerConnections.current[userId] = peerConnection;
 
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && socketRef.current) {
         socketRef.current.emit("ice-candidate", {
           candidate: event.candidate,
           target: userId,
@@ -34,7 +35,6 @@ export const useWebRTC = (socketRef: any, localStream: MediaStream | null) => {
   };
 
   const connectToNewUser = async (userId: string) => {
-    // Ensure that localStream is not null before using it
     if (!localStream) {
       console.error("Local stream is not available");
       return;
@@ -42,13 +42,14 @@ export const useWebRTC = (socketRef: any, localStream: MediaStream | null) => {
 
     const peerConnection = createPeerConnection(userId);
 
-    // Add the local stream's tracks to the peer connection
     localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    socketRef.current.emit("send-offer", { offer, target: userId });
+    if (socketRef.current) {
+      socketRef.current.emit("send-offer", { offer, target: userId });
+    }
   };
 
   return {
