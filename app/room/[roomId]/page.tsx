@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useWebRTC } from "@/app/hooks/useWebRTC";
@@ -10,13 +8,13 @@ const Room = ({ params }: { params: { roomId: string } }) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);  // Set as MediaStream | null
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  const socketRef = useSocket(params.roomId, (userId) => {
-    if (localStream) {  // Ensure localStream is not null
-      webRTC.connectToNewUser(userId);
+  const socket = useSocket(params.roomId, (userId) => {
+    if (localStream) {
+      webRTC.handleNewUserConnection(userId); // Use the new method
     }
   });
 
-  const webRTC = useWebRTC(socketRef, localStream);  // Pass localStream even if it's null
+  const webRTC = useWebRTC(socket, localStream);  // Pass localStream even if it's null
 
   useEffect(() => {
     const getMedia = async () => {
