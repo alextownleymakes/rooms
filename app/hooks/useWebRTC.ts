@@ -1,60 +1,57 @@
-import { useRef } from "react";
-import { Socket } from "socket.io-client";
+import { useEffect, useRef } from "react";
+import { useSocket } from "./useSocket";
 
-export const useWebRTC = (socketRef: React.MutableRefObject<Socket | null>, localStream: MediaStream | null) => {
-  const peerConnections = useRef<{ [key: string]: RTCPeerConnection }>({});
-  const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+export const useWebRTC = (socket: ReturnType<typeof useSocket>, localStream: MediaStream | null) => {
+  const connectionRef = useRef<RTCPeerConnection | null>(null);
 
-  const createPeerConnection = (userId: string) => {
-    const peerConnection = new RTCPeerConnection();
+  useEffect(() => {
+    const { sendIceCandidate, getConnectedUsers } = socket;
 
-    peerConnections.current[userId] = peerConnection;
+    if (!localStream) return;
+
+    const peerConnection = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        // Add TURN server configuration if needed
+      ],
+    });
+
+    connectionRef.current = peerConnection;
+
+    localStream.getTracks().forEach((track) => {
+      peerConnection.addTrack(track, localStream);
+    });
 
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current) {
-        socketRef.current.emit("ice-candidate", {
-          candidate: event.candidate,
-          target: userId,
+      if (event.candidate) {
+        const candidate = event.candidate.toJSON(); // Convert to JSON
+        const connectedUsers = getConnectedUsers();
+        connectedUsers.forEach((userId) => {
+          sendIceCandidate({ target: userId, candidate }); // Use the JSON representation
         });
       }
     };
 
-    peerConnection.ontrack = (event) => {
-      if (!remoteVideoRefs.current[userId]) {
-        const videoElement = document.createElement("video");
-        videoElement.autoplay = true;
-        videoElement.playsInline = true;
-        videoElement.style.width = "300px";
-        document.body.append(videoElement);
-        remoteVideoRefs.current[userId] = videoElement;
-      }
-      remoteVideoRefs.current[userId]!.srcObject = event.streams[0];
+    // peerConnection.ontrack = (event) => {
+    //   // Handle remote track events here
+    // };
+
+    return () => {
+      peerConnection.close();
     };
+  }, [socket, localStream]);
 
-    return peerConnection;
-  };
-
-  const connectToNewUser = async (userId: string) => {
-    if (!localStream) {
-      console.error("Local stream is not available");
-      return;
-    }
-
-    const peerConnection = createPeerConnection(userId);
-
-    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-
-    if (socketRef.current) {
-      socketRef.current.emit("send-offer", { offer, target: userId });
+  const handleNewUserConnection = (userId: string) => {
+    const peerConnection = connectionRef.current;
+    if (peerConnection) {
+      // Handle creating and sending an offer to the new user
+      peerConnection.createOffer().then((offer) => {
+        peerConnection.setLocalDescription(offer).then(() => {
+          socket.sendOffer({ target: userId, offer });
+        });
+      });
     }
   };
 
-  return {
-    connectToNewUser,
-    peerConnections,
-    remoteVideoRefs,
-  };
+  return { handleNewUserConnection, sendOffer: socket.sendOffer, sendAnswer: socket.sendAnswer, sendIceCandidate: socket.sendIceCandidate };
 };

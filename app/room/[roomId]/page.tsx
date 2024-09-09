@@ -1,4 +1,4 @@
-'use client';
+"use client";  // Add this line at the very top of the file
 
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "@/app/hooks/useSocket";
@@ -7,16 +7,16 @@ import Video from "@/app/components/Video";
 
 const Room = ({ params }: { params: { roomId: string } }) => {
   const [hasAccess, setHasAccess] = useState(false);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);  // Set as MediaStream | null
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  const socketRef = useSocket(params.roomId, (userId) => {
-    if (localStream) {  // Ensure localStream is not null
-      webRTC.connectToNewUser(userId);
+  const socket = useSocket(params.roomId, (userId) => {
+    if (localStream) {
+      webRTC.handleNewUserConnection(userId);
     }
   });
 
-  const webRTC = useWebRTC(socketRef, localStream);  // Pass localStream even if it's null
+  const webRTC = useWebRTC(socket, localStream);
 
   useEffect(() => {
     const getMedia = async () => {
