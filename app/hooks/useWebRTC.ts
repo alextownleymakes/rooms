@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Socket } from "socket.io-client";
 import { useSocket } from "./useSocket";
 
 export const useWebRTC = (socket: ReturnType<typeof useSocket>, localStream: MediaStream | null) => {
   const connectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    const { sendOffer, sendAnswer, sendIceCandidate, getConnectedUsers } = socket;
+    const { sendIceCandidate, getConnectedUsers } = socket;
 
     if (!localStream) return;
 
@@ -33,9 +32,9 @@ export const useWebRTC = (socket: ReturnType<typeof useSocket>, localStream: Med
       }
     };
 
-    peerConnection.ontrack = (event) => {
-      // Handle remote track events here
-    };
+    // peerConnection.ontrack = (event) => {
+    //   // Handle remote track events here
+    // };
 
     return () => {
       peerConnection.close();

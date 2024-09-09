@@ -11,9 +11,13 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   const server = express();
   const httpServer = createServer(server);
-  const io = new SocketIOServer(httpServer);
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: '*',
+    },
+  });
 
-  io.on('connection', (socket: Socket) => { // Explicitly typing socket
+  io.on('connection', (socket: Socket) => {
     console.log('New user connected:', socket.id);
 
     socket.on('join-room', (roomId: string, userId: string) => {
